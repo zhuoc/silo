@@ -153,12 +153,7 @@ BENCH_LDFLAGS := $(LDFLAGS) -ldb_cxx -lz -lrt -lcrypt -laio -ldl -lssl -lcrypto
 
 BENCH_SRCFILES = benchmarks/bdb_wrapper.cc \
 	benchmarks/bench.cc \
-	benchmarks/encstress.cc \
-	benchmarks/bid.cc \
-	benchmarks/masstree/kvrandom.cc \
-	benchmarks/queue.cc \
 	benchmarks/tpcc.cc \
-	benchmarks/ycsb.cc
 
 ifeq ($(MYSQL_S),1)
 BENCH_CXXFLAGS += -DMYSQL_SHARE_DIR=\"$(MYSQL_SHARE_DIR)\"
@@ -170,8 +165,7 @@ endif
 
 BENCH_OBJFILES := $(patsubst %.cc, $(O)/%.o, $(BENCH_SRCFILES))
 
-NEWBENCH_SRCFILES = new-benchmarks/bench.cc \
-	new-benchmarks/tpcc.cc
+NEWBENCH_SRCFILES =
 
 NEWBENCH_OBJFILES := $(patsubst %.cc, $(O)/%.o, $(NEWBENCH_SRCFILES))
 
