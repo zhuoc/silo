@@ -4,6 +4,8 @@
 #include "abstract_db.h"
 #include "../txn_btree.h"
 
+#include "measurement.h"
+
 namespace private_ {
   struct ndbtxn {
     abstract_db::TxnProfileHint hint;
@@ -92,7 +94,7 @@ public:
       str_arena &arena,
       void *buf,
       TxnProfileHint hint);
-  virtual bool commit_txn(void *txn);
+  virtual bool commit_txn(void *txn, zh_stat &measurements);
   virtual void abort_txn(void *txn);
   virtual void print_txn_debug(void *txn) const;
   virtual std::map<std::string, uint64_t> get_txn_counters(void *txn) const;

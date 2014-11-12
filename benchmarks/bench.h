@@ -15,6 +15,8 @@
 #include "../spinbarrier.h"
 #include "../rcu.h"
 
+#include "measurement.h"
+
 extern void ycsb_do_test(abstract_db *db, int argc, char **argv);
 extern void tpcc_do_test(abstract_db *db, int argc, char **argv);
 extern void queue_do_test(abstract_db *db, int argc, char **argv);
@@ -67,6 +69,7 @@ public:
                const std::map<std::string, abstract_ordered_index *> &open_tables)
     : r(seed), db(db), open_tables(open_tables), b(0)
   {
+	measurements.other = -1;
     txn_obj_buf.reserve(str_arena::MinStrReserveLength);
     txn_obj_buf.resize(db->sizeof_txn_object(txn_flags));
   }
@@ -99,6 +102,7 @@ protected:
   spin_barrier *b;
   std::string txn_obj_buf;
   str_arena arena;
+  zh_stat measurements; // Zhuo's hack: just want something to pass...
 };
 
 class bench_worker : public ndb_thread {
@@ -118,6 +122,15 @@ public:
       backoff_shifts(0), // spin between [0, 2^backoff_shifts) times before retry
       size_delta(0)
   {
+	int i;
+	for (i = 0; i < 5; i++) {
+		measurements.prep[i] = 0;
+		measurements.work[i] = 0;
+		measurements.commit[i] = 0;
+	}
+	measurements.index = 0;
+	measurements.table = 0;
+	measurements.other = 0;
     txn_obj_buf.reserve(str_arena::MinStrReserveLength);
     txn_obj_buf.resize(db->sizeof_txn_object(txn_flags));
   }
@@ -205,6 +218,8 @@ protected:
 
   std::string txn_obj_buf;
   str_arena arena;
+public:
+  zh_stat measurements;
 };
 
 class bench_runner {
@@ -230,6 +245,8 @@ protected:
   // barriers for actual benchmark execution
   spin_barrier barrier_a;
   spin_barrier barrier_b;
+
+  zh_stat measurements;
 };
 
 // XXX(stephentu): limit_callback is not optimal, should use

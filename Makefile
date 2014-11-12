@@ -151,8 +151,8 @@ MASSTREE_OBJFILES := $(patsubst masstree/%.cc, $(O)/%.o, $(MASSTREE_SRCFILES))
 BENCH_CXXFLAGS := $(CXXFLAGS)
 BENCH_LDFLAGS := $(LDFLAGS) -ldb_cxx -lz -lrt -lcrypt -laio -ldl -lssl -lcrypto
 
-BENCH_SRCFILES = benchmarks/bdb_wrapper.cc \
-	benchmarks/bench.cc \
+#BENCH_SRCFILES = benchmarks/bdb_wrapper.cc \ 
+BENCH_SRCFILES =	benchmarks/bench.cc \
 	benchmarks/tpcc.cc \
 
 ifeq ($(MYSQL_S),1)

@@ -11,6 +11,8 @@
 #include "abstract_ordered_index.h"
 #include "../str_arena.h"
 
+#include "measurement.h"
+
 /**
  * Abstract interface for a DB. This is to facilitate writing
  * benchmarks for different systems, making each system present
@@ -116,7 +118,7 @@ public:
    * On failure, can either throw abstract_abort_exception, or
    * return false- caller should be prepared to deal with both cases
    */
-  virtual bool commit_txn(void *txn) = 0;
+  virtual bool commit_txn(void *txn, zh_stat &measurements) = 0;
 
   /**
    * XXX

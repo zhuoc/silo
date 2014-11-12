@@ -248,6 +248,11 @@ bench_runner::run()
   size_t n_aborts = 0;
   uint64_t latency_numer_us = 0;
   for (size_t i = 0; i < nthreads; i++) {
+	for (int j = 0; j < 5; j++) {
+      measurements.prep[j] += workers[i]->measurements.prep[j];
+      measurements.work[j] += workers[i]->measurements.work[j];
+      measurements.commit[j] += workers[i]->measurements.commit[j];
+	}
     n_commits += workers[i]->get_ntxn_commits();
     n_aborts += workers[i]->get_ntxn_aborts();
     latency_numer_us += workers[i]->get_latency_numer_us();
@@ -283,6 +288,7 @@ bench_runner::run()
   // XXX(stephentu): latency currently doesn't account for read-only txns
   const double avg_latency_us =
     double(latency_numer_us) / double(n_commits);
+  const double latency_total_ms = double(latency_numer_us) / 1000.0;
   const double avg_latency_ms = avg_latency_us / 1000.0;
   const double avg_persist_latency_ms =
     get<2>(persisted_info) / 1000.0;
@@ -337,6 +343,7 @@ bench_runner::run()
     cerr << "agg_persist_throughput: " << agg_persist_throughput << " ops/sec" << endl;
     cerr << "avg_per_core_persist_throughput: " << avg_per_core_persist_throughput << " ops/sec/core" << endl;
     cerr << "avg_latency: " << avg_latency_ms << " ms" << endl;
+    cerr << "total_latency: " << latency_total_ms << " ms" << endl;
     cerr << "avg_persist_latency: " << avg_persist_latency_ms << " ms" << endl;
     cerr << "agg_abort_rate: " << agg_abort_rate << " aborts/sec" << endl;
     cerr << "avg_per_core_abort_rate: " << avg_per_core_abort_rate << " aborts/sec/core" << endl;
@@ -368,6 +375,11 @@ bench_runner::run()
        << avg_latency_ms << " "
        << avg_persist_latency_ms << " "
        << agg_abort_rate << endl;
+  cout.flush();
+
+  cout << measurements.get_prep() << " "
+	   << measurements.get_work() << " "
+	   << measurements.get_commit() << endl;
   cout.flush();
 
   if (!slow_exit)

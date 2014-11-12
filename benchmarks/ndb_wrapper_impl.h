@@ -14,6 +14,8 @@
 #include "../txn_proto2_impl.h"
 #include "../tuple.h"
 
+#include "measurement.h"
+
 struct hint_default_traits : public default_transaction_traits {
   typedef str_arena StringAllocator;
 };
@@ -195,7 +197,7 @@ Destroy(T *t)
 
 template <template <typename> class Transaction>
 bool
-ndb_wrapper<Transaction>::commit_txn(void *txn)
+ndb_wrapper<Transaction>::commit_txn(void *txn, zh_stat &measurements)
 {
   ndbtxn * const p = reinterpret_cast<ndbtxn *>(txn);
 #define MY_OP_X(a, b) \

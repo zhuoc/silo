@@ -276,10 +276,11 @@ main(int argc, char **argv)
 #endif
 
   if (db_type == "bdb") {
-    const string cmd = "rm -rf " + basedir + "/db/*";
+	  ;
+    //const string cmd = "rm -rf " + basedir + "/db/*";
     // XXX(stephentu): laziness
-    int ret UNUSED = system(cmd.c_str());
-    db = new bdb_wrapper("db", bench_type + ".db");
+    //int ret UNUSED = system(cmd.c_str());
+    //db = new bdb_wrapper("db", bench_type + ".db");
   } else if (db_type == "ndb-proto1") {
     // XXX: hacky simulation of proto1
     db = new ndb_wrapper<transaction_proto2>(
@@ -303,13 +304,13 @@ main(int argc, char **argv)
       transaction_proto2_static::DisableSnapshots();
 #endif
   } else if (db_type == "kvdb") {
-    db = new kvdb_wrapper<true>;
+    //db = new kvdb_wrapper<true>;
   } else if (db_type == "kvdb-st") {
-    db = new kvdb_wrapper<false>;
+    //db = new kvdb_wrapper<false>;
 #if !NO_MYSQL
   } else if (db_type == "mysql") {
-    string dbdir = basedir + "/mysql-db";
-    db = new mysql_wrapper(dbdir, bench_type);
+    //string dbdir = basedir + "/mysql-db";
+    //db = new mysql_wrapper(dbdir, bench_type);
 #endif
   } else
     ALWAYS_ASSERT(false);
