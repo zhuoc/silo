@@ -21,6 +21,9 @@ public:
 	double prep[5]; // preparation
 	double work[5]; // real work
 	double commit[5]; // commit
+
+	double search;
+
 	double index;
 	double table;
 	double other;

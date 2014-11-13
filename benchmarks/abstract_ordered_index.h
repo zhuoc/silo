@@ -9,6 +9,8 @@
 #include "../macros.h"
 #include "../str_arena.h"
 
+#include "measurement.h"
+
 /**
  * The underlying index manages memory for keys/values, but
  * may choose to expose the underlying memory to callers
@@ -24,6 +26,7 @@ public:
    * the memory associated with key. Returns true if found, false otherwise
    */
   virtual bool get(
+      zh_stat &measurements,
       void *txn,
       const std::string &key,
       std::string &value,
@@ -48,6 +51,7 @@ public:
    * search [start_key, +infty)
    */
   virtual void scan(
+      zh_stat &measurements,
       void *txn,
       const std::string &start_key,
       const std::string *end_key,
@@ -60,6 +64,7 @@ public:
    * backwards)
    */
   virtual void rscan(
+      zh_stat &measurements,
       void *txn,
       const std::string &start_key,
       const std::string *end_key,
@@ -80,17 +85,19 @@ public:
    * returned is guaranteed to be valid memory until the key associated with
    * value is overriden.
    */
-  virtual const char *
-  put(void *txn,
+  virtual const char * put(
+      zh_stat &measurements,
+      void *txn,
       const std::string &key,
       const std::string &value) = 0;
 
-  virtual const char *
-  put(void *txn,
+  virtual const char * put(
+      zh_stat &measurements,
+      void *txn,
       std::string &&key,
       std::string &&value)
   {
-    return put(txn, static_cast<const std::string &>(key),
+    return put(measurements, txn, static_cast<const std::string &>(key),
                     static_cast<const std::string &>(value));
   }
 
@@ -102,20 +109,22 @@ public:
    *
    * Default implementation calls put(). See put() for meaning of return value.
    */
-  virtual const char *
-  insert(void *txn,
-         const std::string &key,
-         const std::string &value)
+  virtual const char * insert(
+      zh_stat &measurements,
+      void *txn,
+      const std::string &key,
+      const std::string &value)
   {
-    return put(txn, key, value);
+    return put(measurements, txn, key, value);
   }
 
-  virtual const char *
-  insert(void *txn,
-         std::string &&key,
-         std::string &&value)
+  virtual const char * insert(
+      zh_stat &measurements,
+      void *txn,
+      std::string &&key,
+      std::string &&value)
   {
-    return insert(txn, static_cast<const std::string &>(key),
+    return insert(measurements, txn, static_cast<const std::string &>(key),
                        static_cast<const std::string &>(value));
   }
 
@@ -123,17 +132,19 @@ public:
    * Default implementation calls put() with NULL (zero-length) value
    */
   virtual void remove(
+      zh_stat &measurements,
       void *txn,
       const std::string &key)
   {
-    put(txn, key, "");
+    put(measurements, txn, key, "");
   }
 
   virtual void remove(
+      zh_stat &measurements,
       void *txn,
       std::string &&key)
   {
-    remove(txn, static_cast<const std::string &>(key));
+    remove(measurements, txn, static_cast<const std::string &>(key));
   }
 
   /**

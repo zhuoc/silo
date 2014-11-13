@@ -37,6 +37,8 @@
 #include "marked_ptr.h"
 #include "ndb_type_traits.h"
 
+#include "benchmarks/measurement.h"
+
 // forward decl
 template <template <typename> class Transaction, typename P>
   class base_txn_btree;
@@ -627,13 +629,14 @@ public:
   // returns TRUE on successful commit, FALSE on abort
   // if doThrow, signals success by returning true, and
   // failure by throwing an abort exception
-  bool commit(bool doThrow = false);
+  bool commit(zh_stat &measurements, bool doThrow = false);
 
   // abort() always succeeds
   inline void
   abort()
   {
-    abort_impl(ABORT_REASON_USER);
+    zh_stat measurements;
+    abort_impl(measurements, ABORT_REASON_USER);
   }
 
   void dump_debug_info() const;
@@ -683,11 +686,11 @@ public:
   }
 
 protected:
-  inline void abort_impl(abort_reason r);
+  inline void abort_impl(zh_stat &measurements, abort_reason r);
 
   // assumes lock on marker is held on marker by caller, and marker is the
   // latest: removes marker from tree, and clears latest
-  void cleanup_inserted_tuple_marker(
+  void cleanup_inserted_tuple_marker(zh_stat &measurements,
       dbtuple *marker, const std::string &key,
       concurrent_btree *btr);
 
@@ -712,6 +715,7 @@ protected:
   // NOTE: assumes key/value are stable
   std::pair< dbtuple *, bool >
   try_insert_new_tuple(
+      zh_stat &measurements,
       concurrent_btree &btr,
       const std::string *key,
       const void *value,
@@ -721,10 +725,10 @@ protected:
   // within this transaction context
   template <typename ValueReader>
   bool
-  do_tuple_read(const dbtuple *tuple, ValueReader &value_reader);
+  do_tuple_read(zh_stat &measurements, const dbtuple *tuple, ValueReader &value_reader);
 
   void
-  do_node_read(const typename concurrent_btree::node_opaque_t *n, uint64_t version);
+  do_node_read(zh_stat &measurements, const typename concurrent_btree::node_opaque_t *n, uint64_t version);
 
 public:
   // expected public overrides

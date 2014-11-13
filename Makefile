@@ -131,7 +131,6 @@ SRCFILES = allocator.cc \
 	thread.cc \
 	ticker.cc \
 	tuple.cc \
-	txn_btree.cc \
 	txn.cc \
 	txn_proto2_impl.cc \
 	varint.cc
@@ -169,8 +168,6 @@ NEWBENCH_SRCFILES =
 
 NEWBENCH_OBJFILES := $(patsubst %.cc, $(O)/%.o, $(NEWBENCH_SRCFILES))
 
-all: $(O)/test
-
 $(O)/benchmarks/%.o: benchmarks/%.cc $(O)/buildstamp $(O)/buildstamp.bench $(OBJDEP)
 	@mkdir -p $(@D)
 	$(CXX) $(BENCH_CXXFLAGS) -c $< -o $@
@@ -195,16 +192,8 @@ third-party/lz4/liblz4.so:
 	make -C third-party/lz4 library
 
 .PHONY: test
-test: $(O)/test
-
-$(O)/test: $(O)/test.o $(OBJFILES) $(MASSTREE_OBJFILES) third-party/lz4/liblz4.so
-	$(CXX) -o $(O)/test $^ $(LDFLAGS) $(LZ4LDFLAGS)
 
 .PHONY: persist_test
-persist_test: $(O)/persist_test
-
-$(O)/persist_test: $(O)/persist_test.o third-party/lz4/liblz4.so
-	$(CXX) -o $(O)/persist_test $(O)/persist_test.o $(LDFLAGS) $(LZ4LDFLAGS)
 
 .PHONY: stats_client
 stats_client: $(O)/stats_client

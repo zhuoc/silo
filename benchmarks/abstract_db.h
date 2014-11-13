@@ -123,7 +123,7 @@ public:
   /**
    * XXX
    */
-  virtual void abort_txn(void *txn) = 0;
+  virtual void abort_txn(zh_stat &measurements, void *txn) = 0;
 
   virtual void print_txn_debug(void *txn) const {}
 

@@ -3,6 +3,8 @@
 
 #include "base_txn_btree.h"
 
+#include "benchmarks/measurement.h"
+
 // XXX: hacky
 extern void txn_btree_test();
 
@@ -290,30 +292,33 @@ public:
 
   template <typename Traits>
   inline bool
-  search(Transaction<Traits> &t,
+  search(zh_stat &measurements,
+         Transaction<Traits> &t,
          const varkey &k,
          value_type &v,
          size_t max_bytes_read = string_type::npos)
   {
-    return search(t, to_string_type(k), v, max_bytes_read);
+    return search(measurements, t, to_string_type(k), v, max_bytes_read);
   }
 
   // either returns false or v is set to not-empty with value
   // precondition: max_bytes_read > 0
   template <typename Traits>
   inline bool
-  search(Transaction<Traits> &t,
+  search(zh_stat &measurements,
+         Transaction<Traits> &t,
          const key_type &k,
          value_type &v,
          size_type max_bytes_read = string_type::npos)
   {
     single_value_reader_type r(&v, max_bytes_read);
-    return this->do_search(t, k, r);
+    return this->do_search(measurements, t, k, r);
   }
 
   template <typename Traits>
   inline void
-  search_range_call(Transaction<Traits> &t,
+  search_range_call(zh_stat &measurements,
+                    Transaction<Traits> &t,
                     const key_type &lower,
                     const key_type *upper,
                     search_range_callback &callback,
@@ -321,12 +326,13 @@ public:
   {
     key_reader_type kr;
     value_reader_type vr(max_bytes_read);
-    this->do_search_range_call(t, lower, upper, callback, kr, vr);
+    this->do_search_range_call(measurements, t, lower, upper, callback, kr, vr);
   }
 
   template <typename Traits>
   inline void
-  rsearch_range_call(Transaction<Traits> &t,
+  rsearch_range_call(zh_stat &measurements,
+                     Transaction<Traits> &t,
                      const key_type &upper,
                      const key_type *lower,
                      search_range_callback &callback,
@@ -334,12 +340,13 @@ public:
   {
     key_reader_type kr;
     value_reader_type vr(max_bytes_read);
-    this->do_rsearch_range_call(t, upper, lower, callback, kr, vr);
+    this->do_rsearch_range_call(measurements, t, upper, lower, callback, kr, vr);
   }
 
   template <typename Traits>
   inline void
-  search_range_call(Transaction<Traits> &t,
+  search_range_call(zh_stat &measurements,
+                    Transaction<Traits> &t,
                     const varkey &lower,
                     const varkey *upper,
                     search_range_callback &callback,
@@ -348,13 +355,14 @@ public:
     key_type u;
     if (upper)
       u = to_string_type(*upper);
-    search_range_call(t, to_string_type(lower),
+    search_range_call(measurements, t, to_string_type(lower),
         upper ? &u : nullptr, callback, max_bytes_read);
   }
 
   template <typename Traits>
   inline void
-  rsearch_range_call(Transaction<Traits> &t,
+  rsearch_range_call(zh_stat &measurements,
+                     Transaction<Traits> &t,
                      const varkey &upper,
                      const varkey *lower,
                      search_range_callback &callback,
@@ -363,25 +371,27 @@ public:
     key_type l;
     if (lower)
       l = to_string_type(*lower);
-    rsearch_range_call(t, to_string_type(upper),
+    rsearch_range_call(measurements, t, to_string_type(upper),
         lower ? &l : nullptr, callback, max_bytes_read);
   }
 
   template <typename Traits, typename T>
   inline void
-  search_range(Transaction<Traits> &t,
+  search_range(zh_stat &measurements,
+               Transaction<Traits> &t,
                const key_type &lower,
                const key_type *upper,
                T &callback,
                size_type max_bytes_read = string_type::npos)
   {
     type_callback_wrapper<T> w(&callback);
-    search_range_call(t, lower, upper, w, max_bytes_read);
+    search_range_call(measurements, t, lower, upper, w, max_bytes_read);
   }
 
   template <typename Traits, typename T>
   inline void
-  search_range(Transaction<Traits> &t,
+  search_range(zh_stat &measurements,
+               Transaction<Traits> &t,
                const varkey &lower,
                const varkey *upper,
                T &callback,
@@ -390,36 +400,36 @@ public:
     key_type u;
     if (upper)
       u = to_string_type(*upper);
-    search_range(t, to_string_type(lower),
+    search_range(measurements, t, to_string_type(lower),
         upper ? &u : nullptr, callback, max_bytes_read);
   }
 
   template <typename Traits>
   inline void
-  put(Transaction<Traits> &t, const key_type &k, const value_type &v)
+  put(zh_stat &measurements, Transaction<Traits> &t, const key_type &k, const value_type &v)
   {
     INVARIANT(!v.empty());
-    this->do_tree_put(
+    this->do_tree_put(measurements, 
         t, stablize(t, k), stablize(t, v),
         txn_btree_::tuple_writer, false);
   }
 
   template <typename Traits>
   inline void
-  put(Transaction<Traits> &t, const varkey &k, const value_type &v)
+  put(zh_stat &measurements, Transaction<Traits> &t, const varkey &k, const value_type &v)
   {
     INVARIANT(!v.empty());
-    this->do_tree_put(
+    this->do_tree_put(measurements,
         t, stablize(t, k), stablize(t, v),
         txn_btree_::tuple_writer, false);
   }
 
   template <typename Traits>
   inline void
-  insert(Transaction<Traits> &t, const key_type &k, const value_type &v)
+  insert(zh_stat &measurements, Transaction<Traits> &t, const key_type &k, const value_type &v)
   {
     INVARIANT(!v.empty());
-    this->do_tree_put(
+    this->do_tree_put(measurements,
         t, stablize(t, k), stablize(t, v),
         txn_btree_::tuple_writer, true);
   }
@@ -428,22 +438,22 @@ public:
 
   template <typename Traits>
   inline void
-  insert(Transaction<Traits> &t, const key_type &k, const uint8_t *v, size_type sz)
+  insert(zh_stat &measurements, Transaction<Traits> &t, const key_type &k, const uint8_t *v, size_type sz)
   {
     INVARIANT(v);
     INVARIANT(sz);
-    this->do_tree_put(
+    this->do_tree_put(measurements,
         t, stablize(t, k), stablize(t, v, sz),
         txn_btree_::tuple_writer, true);
   }
 
   template <typename Traits>
   inline void
-  insert(Transaction<Traits> &t, const varkey &k, const uint8_t *v, size_type sz)
+  insert(zh_stat &measurements, Transaction<Traits> &t, const varkey &k, const uint8_t *v, size_type sz)
   {
     INVARIANT(v);
     INVARIANT(sz);
-    this->do_tree_put(
+    this->do_tree_put(measurements,
         t, stablize(t, k), stablize(t, v, sz),
         txn_btree_::tuple_writer, true);
   }
@@ -464,16 +474,16 @@ public:
 
   template <typename Traits>
   inline void
-  remove(Transaction<Traits> &t, const key_type &k)
+  remove(zh_stat &measurements, Transaction<Traits> &t, const key_type &k)
   {
-    this->do_tree_put(t, stablize(t, k), nullptr, txn_btree_::tuple_writer, false);
+    this->do_tree_put(measurements, t, stablize(t, k), nullptr, txn_btree_::tuple_writer, false);
   }
 
   template <typename Traits>
   inline void
-  remove(Transaction<Traits> &t, const varkey &k)
+  remove(zh_stat &measurements, Transaction<Traits> &t, const varkey &k)
   {
-    this->do_tree_put(t, stablize(t, k), nullptr, txn_btree_::tuple_writer, false);
+    this->do_tree_put(measurements, t, stablize(t, k), nullptr, txn_btree_::tuple_writer, false);
   }
 
   static void Test();

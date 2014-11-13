@@ -128,6 +128,7 @@ public:
 		measurements.work[i] = 0;
 		measurements.commit[i] = 0;
 	}
+    measurements.search = 0;
 	measurements.index = 0;
 	measurements.table = 0;
 	measurements.other = 0;

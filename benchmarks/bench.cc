@@ -253,6 +253,8 @@ bench_runner::run()
       measurements.work[j] += workers[i]->measurements.work[j];
       measurements.commit[j] += workers[i]->measurements.commit[j];
 	}
+    measurements.search += workers[i]->measurements.search;
+    measurements.index += workers[i]->measurements.index;
     n_commits += workers[i]->get_ntxn_commits();
     n_aborts += workers[i]->get_ntxn_aborts();
     latency_numer_us += workers[i]->get_latency_numer_us();
@@ -380,6 +382,10 @@ bench_runner::run()
   cout << measurements.get_prep() << " "
 	   << measurements.get_work() << " "
 	   << measurements.get_commit() << endl;
+  cout.flush();
+
+  cout << measurements.search << endl;
+  cout << measurements.index << endl;
   cout.flush();
 
   if (!slow_exit)
