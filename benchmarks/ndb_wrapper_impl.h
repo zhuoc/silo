@@ -197,8 +197,15 @@ Destroy(T *t)
 
 template <template <typename> class Transaction>
 bool
-ndb_wrapper<Transaction>::commit_txn(void *txn, zh_stat &measurements)
+ndb_wrapper<Transaction>::commit_txn(void *txn, zh_stat *measurements)
 {
+  util::timer t_cc; 
+  util::timer t_cc2; 
+  t_cc2.lap();
+  util::timer t_cc3; 
+  t_cc3.lap();
+  util::timer t_cc4; 
+  t_cc4.lap();
   ndbtxn * const p = reinterpret_cast<ndbtxn *>(txn);
 #define MY_OP_X(a, b) \
   case a: \
@@ -206,6 +213,7 @@ ndb_wrapper<Transaction>::commit_txn(void *txn, zh_stat &measurements)
       auto t = cast< b >()(p); \
       const bool ret = t->commit(measurements); \
       Destroy(t); \
+	  if (measurements != NULL) measurements->cc += t_cc.lap(); \
       return ret; \
     }
   switch (p->hint) {
@@ -219,7 +227,7 @@ ndb_wrapper<Transaction>::commit_txn(void *txn, zh_stat &measurements)
 
 template <template <typename> class Transaction>
 void
-ndb_wrapper<Transaction>::abort_txn(zh_stat &measurements, void *txn)
+ndb_wrapper<Transaction>::abort_txn(zh_stat *measurements, void *txn)
 {
   ndbtxn * const p = reinterpret_cast<ndbtxn *>(txn);
 #define MY_OP_X(a, b) \
@@ -306,7 +314,7 @@ ndb_ordered_index<Transaction>::ndb_ordered_index(
 template <template <typename> class Transaction>
 bool
 ndb_ordered_index<Transaction>::get(
-    zh_stat &measurements,
+    zh_stat *measurements,
     void *txn,
     const std::string &key,
     std::string &value, size_t max_bytes_read)
@@ -341,7 +349,7 @@ ndb_ordered_index<Transaction>::get(
 template <template <typename> class Transaction>
 const char *
 ndb_ordered_index<Transaction>::put(
-    zh_stat &measurements,
+    zh_stat *measurements,
     void *txn,
     const std::string &key,
     const std::string &value)
@@ -372,7 +380,7 @@ ndb_ordered_index<Transaction>::put(
 template <template <typename> class Transaction>
 const char *
 ndb_ordered_index<Transaction>::put(
-    zh_stat &measurements,
+    zh_stat *measurements,
     void *txn,
     std::string &&key,
     std::string &&value)
@@ -401,7 +409,7 @@ ndb_ordered_index<Transaction>::put(
 template <template <typename> class Transaction>
 const char *
 ndb_ordered_index<Transaction>::insert(
-    zh_stat &measurements,
+    zh_stat *measurements,
     void *txn,
     const std::string &key,
     const std::string &value)
@@ -432,7 +440,7 @@ ndb_ordered_index<Transaction>::insert(
 template <template <typename> class Transaction>
 const char *
 ndb_ordered_index<Transaction>::insert(
-    zh_stat &measurements,
+    zh_stat *measurements,
     void *txn,
     std::string &&key,
     std::string &&value)
@@ -478,7 +486,7 @@ private:
 template <template <typename> class Transaction>
 void
 ndb_ordered_index<Transaction>::scan(
-    zh_stat &measurements,
+    zh_stat *measurements,
     void *txn,
     const std::string &start_key,
     const std::string *end_key,
@@ -511,7 +519,7 @@ ndb_ordered_index<Transaction>::scan(
 template <template <typename> class Transaction>
 void
 ndb_ordered_index<Transaction>::rscan(
-    zh_stat &measurements,
+    zh_stat *measurements,
     void *txn,
     const std::string &start_key,
     const std::string *end_key,
@@ -541,7 +549,7 @@ ndb_ordered_index<Transaction>::rscan(
 
 template <template <typename> class Transaction>
 void
-ndb_ordered_index<Transaction>::remove(zh_stat &measurements, void *txn, const std::string &key)
+ndb_ordered_index<Transaction>::remove(zh_stat *measurements, void *txn, const std::string &key)
 {
   PERF_DECL(static std::string probe1_name(std::string(__PRETTY_FUNCTION__) + std::string(":total:")));
   ANON_REGION(probe1_name.c_str(), &private_::ndb_remove_probe0_cg);
@@ -567,7 +575,7 @@ ndb_ordered_index<Transaction>::remove(zh_stat &measurements, void *txn, const s
 
 template <template <typename> class Transaction>
 void
-ndb_ordered_index<Transaction>::remove(zh_stat &measurements, void *txn, std::string &&key)
+ndb_ordered_index<Transaction>::remove(zh_stat *measurements, void *txn, std::string &&key)
 {
   ndbtxn * const p = reinterpret_cast<ndbtxn *>(txn);
   try {

@@ -94,8 +94,8 @@ public:
       str_arena &arena,
       void *buf,
       TxnProfileHint hint);
-  virtual bool commit_txn(void *txn, zh_stat &measurements);
-  virtual void abort_txn(zh_stat &measurements, void *txn);
+  virtual bool commit_txn(void *txn, zh_stat *measurements);
+  virtual void abort_txn(zh_stat *measurements, void *txn);
   virtual void print_txn_debug(void *txn) const;
   virtual std::map<std::string, uint64_t> get_txn_counters(void *txn) const;
 
@@ -119,50 +119,50 @@ protected:
 public:
   ndb_ordered_index(const std::string &name, size_t value_size_hint, bool mostly_append);
   virtual bool get(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &key,
       std::string &value, size_t max_bytes_read);
   virtual const char * put(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &key,
       const std::string &value);
   virtual const char * put(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       std::string &&key,
       std::string &&value);
   virtual const char * insert(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &key,
       const std::string &value);
   virtual const char * insert(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       std::string &&key,
       std::string &&value);
   virtual void scan(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &start_key,
       const std::string *end_key,
       scan_callback &callback,
       str_arena *arena);
   virtual void rscan(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &start_key,
       const std::string *end_key,
       scan_callback &callback,
       str_arena *arena);
   virtual void remove(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &key);
   virtual void remove(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       std::string &&key);
   virtual size_t size() const;

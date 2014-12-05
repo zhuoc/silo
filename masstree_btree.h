@@ -34,6 +34,8 @@
 #include "masstree/mtcounters.hh"
 #include "masstree/circular_int.hh"
 
+#include "benchmarks/measurement.h"
+
 class simple_threadinfo {
  public:
     simple_threadinfo()

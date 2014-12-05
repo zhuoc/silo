@@ -16,6 +16,8 @@
 #include "spinbarrier.h"
 #include "record/serializer.h"
 
+#include "benchmarks/measurement.h"
+
 // forward decl
 template <typename Traits> class transaction_proto2;
 template <template <typename> class Transaction>
@@ -569,7 +571,7 @@ protected:
   };
 
   static void
-  clean_up_to_including(threadctx &ctx, uint64_t ro_tick_geq);
+  clean_up_to_including(threadctx &ctx, uint64_t ro_tick_geq, zh_stat *measurements = NULL);
 
   // helper methods
   static inline txn_logger::pbuffer *
@@ -1139,7 +1141,7 @@ public:
   }
 
   void
-  on_post_rcu_region_completion()
+  on_post_rcu_region_completion(zh_stat *measurements)
   {
 #ifdef PROTO2_CAN_DISABLE_GC
     if (!IsGCEnabled())
@@ -1158,7 +1160,7 @@ public:
     // all reads happening at >= ro_tick_geq
     const uint64_t ro_tick_geq = ro_tick_ex - 1;
     threadctx &ctx = g_threadctxs.my();
-    clean_up_to_including(ctx, ro_tick_geq);
+    clean_up_to_including(ctx, ro_tick_geq, measurements);
   }
 
 private:

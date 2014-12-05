@@ -4,6 +4,8 @@
 #include "txn.h"
 #include "lockguard.h"
 
+#include "benchmarks/measurement.h"
+
 // base definitions
 
 template <template <typename> class Protocol, typename Traits>
@@ -25,9 +27,10 @@ transaction<Protocol, Traits>::~transaction()
   INVARIANT(rcu::s_instance.in_rcu_region());
   const unsigned cur_depth = rcu_guard_->sync()->depth();
   rcu_guard_.destroy();
+  zh_stat *measurements = new zh_stat();
   if (cur_depth == 1) {
     INVARIANT(!rcu::s_instance.in_rcu_region());
-    cast()->on_post_rcu_region_completion();
+    cast()->on_post_rcu_region_completion(measurements);
   }
 #ifdef BTREE_LOCK_OWNERSHIP_CHECKING
   concurrent_btree::AssertAllNodeLocksReleased();
@@ -46,7 +49,7 @@ transaction<Protocol, Traits>::clear()
 
 template <template <typename> class Protocol, typename Traits>
 void
-transaction<Protocol, Traits>::abort_impl(zh_stat &measurements, abort_reason reason)
+transaction<Protocol, Traits>::abort_impl(abort_reason reason, zh_stat *measurements)
 {
   abort_trap(reason);
   switch (state) {
@@ -80,7 +83,7 @@ transaction<Protocol, Traits>::abort_impl(zh_stat &measurements, abort_reason re
 template <template <typename> class Protocol, typename Traits>
 void
 transaction<Protocol, Traits>::cleanup_inserted_tuple_marker(
-    zh_stat &measurements, dbtuple *marker, const std::string &key, concurrent_btree *btr)
+    zh_stat *measurements, dbtuple *marker, const std::string &key, concurrent_btree *btr)
 {
   // XXX: this code should really live in txn_proto2_impl.h
   INVARIANT(marker->version == dbtuple::MAX_TID);
@@ -89,7 +92,7 @@ transaction<Protocol, Traits>::cleanup_inserted_tuple_marker(
   typename concurrent_btree::value_type removed = 0;
   util::timer t_index;
   const bool did_remove = btr->remove(varkey(key), &removed);
-  measurements.index += t_index.lap();
+  if (measurements != NULL) measurements->index += t_index.lap();
   if (unlikely(!did_remove)) {
 #ifdef CHECK_INVARIANTS
     std::cerr << " *** could not remove key: " << util::hexify(key)  << std::endl;
@@ -232,7 +235,7 @@ transaction<Protocol, Traits>::handle_last_tuple_in_group(
 
 template <template <typename> class Protocol, typename Traits>
 bool
-transaction<Protocol, Traits>::commit(zh_stat &measurements, bool doThrow)
+transaction<Protocol, Traits>::commit(zh_stat *measurements, bool doThrow)
 {
 #ifdef TUPLE_MAGIC
   try {
@@ -407,10 +410,16 @@ transaction<Protocol, Traits>::commit(zh_stat &measurements, bool doThrow)
                                               // w/o creating a new chain
         } else {
           tuple->prefetch();
+		  util::timer t_table;
           const dbtuple::write_record_ret ret =
             tuple->write_record_at(
                 cast(), commit_tid.second,
                 it->get_value(), it->get_writer());
+		  double l = t_table.lap();
+		  if (measurements != NULL) {
+			measurements->table_write += l;
+			measurements->cc -= l;
+		  }
           bool unlock_head = false;
           if (unlikely(ret.head_ != tuple)) {
             // tuple was replaced by ret.head_
@@ -424,7 +433,11 @@ transaction<Protocol, Traits>::commit(zh_stat &measurements, bool doThrow)
             util::timer t_index;
             bool tmp = it->get_btree()->insert(
                   varkey(it->get_key()), (typename concurrent_btree::value_type) ret.head_, &old_v, NULL);
-            measurements.index += t_index.lap();
+			l = t_index.lap();
+			if (measurements != NULL) {
+				measurements->index += l;
+				measurements->cc -= l;
+			}
             if (tmp)
               // should already exist in tree
               INVARIANT(false);
@@ -503,7 +516,7 @@ do_abort:
 template <template <typename> class Protocol, typename Traits>
 std::pair< dbtuple *, bool >
 transaction<Protocol, Traits>::try_insert_new_tuple(
-    zh_stat &measurements,
+    zh_stat *measurements,
     concurrent_btree &btr,
     const std::string *key,
     const void *value,
@@ -535,7 +548,8 @@ transaction<Protocol, Traits>::try_insert_new_tuple(
   util::timer t_index;
   if (unlikely(!btr.insert_if_absent(
           varkey(*key), (typename concurrent_btree::value_type) tuple, &insert_info))) {
-    measurements.index += t_index.lap();
+    if (measurements != NULL) 
+		measurements->index += t_index.lap();
     VERBOSE(std::cerr << "insert_if_absent failed for key: " << util::hexify(key) << std::endl);
     tuple->clear_latest();
     tuple->unlock();
@@ -543,7 +557,8 @@ transaction<Protocol, Traits>::try_insert_new_tuple(
     ++transaction_base::g_evt_dbtuple_write_insert_failed;
     return std::pair< dbtuple *, bool >(nullptr, false);
   }
-  measurements.index += t_index.lap();
+  if (measurements != NULL) 
+	measurements->index += t_index.lap();
   VERBOSE(std::cerr << "insert_if_absent suceeded for key: " << util::hexify(key) << std::endl
                     << "  new dbtuple is " << util::hexify(tuple) << std::endl);
   // update write_set
@@ -573,7 +588,7 @@ transaction<Protocol, Traits>::try_insert_new_tuple(
 template <template <typename> class Protocol, typename Traits>
 template <typename ValueReader>
 bool
-transaction<Protocol, Traits>::do_tuple_read(zh_stat &measurements,
+transaction<Protocol, Traits>::do_tuple_read(zh_stat *measurements,
     const dbtuple *tuple, ValueReader &value_reader)
 {
   INVARIANT(tuple);
@@ -606,16 +621,19 @@ transaction<Protocol, Traits>::do_tuple_read(zh_stat &measurements,
     PERF_DECL(static std::string probe0_name(std::string(__PRETTY_FUNCTION__) + std::string(":do_read:")));
     ANON_REGION(probe0_name.c_str(), &private_::txn_btree_search_probe0_cg);
     tuple->prefetch();
+	util::timer t_table;
     stat = tuple->stable_read(snapshot_tid, start_t, value_reader, this->string_allocator(), is_snapshot_txn);
+    if (measurements != NULL) 
+		measurements->table_read += t_table.lap();
     if (unlikely(stat == dbtuple::READ_FAILED)) {
       const transaction_base::abort_reason r = transaction_base::ABORT_REASON_UNSTABLE_READ;
-      abort_impl(measurements, r);
+      abort_impl(r, measurements);
       throw transaction_abort_exception(r);
     }
   }
   if (unlikely(!cast()->can_read_tid(start_t))) {
     const transaction_base::abort_reason r = transaction_base::ABORT_REASON_FUTURE_TID_READ;
-    abort_impl(measurements, r);
+    abort_impl(r, measurements);
     throw transaction_abort_exception(r);
   }
   INVARIANT(stat == dbtuple::READ_EMPTY ||
@@ -632,7 +650,7 @@ transaction<Protocol, Traits>::do_tuple_read(zh_stat &measurements,
 
 template <template <typename> class Protocol, typename Traits>
 void
-transaction<Protocol, Traits>::do_node_read(zh_stat &measurements, 
+transaction<Protocol, Traits>::do_node_read(zh_stat *measurements, 
     const typename concurrent_btree::node_opaque_t *n, uint64_t v)
 {
   INVARIANT(n);
@@ -644,7 +662,7 @@ transaction<Protocol, Traits>::do_node_read(zh_stat &measurements,
   } else if (it->second.version != v) {
     const transaction_base::abort_reason r =
       transaction_base::ABORT_REASON_NODE_SCAN_READ_VERSION_CHANGED;
-    abort_impl(measurements, r);
+    abort_impl(r, measurements);
     throw transaction_abort_exception(r);
   }
 }

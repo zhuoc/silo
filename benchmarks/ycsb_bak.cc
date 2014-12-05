@@ -35,7 +35,7 @@ class ycsb_worker : public bench_worker {
 public:
   ycsb_worker(unsigned int worker_id,
               unsigned long seed, abstract_db *db,
-              const map<string, abstract_ordered_index *> &open_tables,
+              const map<string, abstract_ordered_index *> &open_tables, int * skew_load,
               spin_barrier *barrier_a, spin_barrier *barrier_b)
     : bench_worker(worker_id, true, seed, db,
                    open_tables, barrier_a, barrier_b),
@@ -45,6 +45,7 @@ public:
     obj_key0.reserve(str_arena::MinStrReserveLength);
     obj_key1.reserve(str_arena::MinStrReserveLength);
     obj_v.reserve(str_arena::MinStrReserveLength);
+	memcpy(this->skew_load, skew_load, sizeof(int) * 2000);
   }
 
   txn_result
@@ -57,6 +58,7 @@ public:
     scoped_str_arena s_arena(arena);
     try {
       int k = r.next() % nkeys;
+	  //k = skew_load[k];
 	  string kk = u64_varkey(k).str(obj_key0);
 	  t_big.lap();
       ALWAYS_ASSERT(tbl->get(temp_measurements, txn, kk, obj_v));
@@ -94,6 +96,7 @@ public:
     scoped_str_arena s_arena(arena);
     try {
 	  int k = r.next() % nkeys;
+      k = skew_load[k];
 	  t_big.lap();
       tbl->put(temp_measurements, txn, u64_varkey(k).str(str()), str().assign(YCSBRecordSize, 'b'));
 	  temp_measurements->put += t_big.lap();
@@ -433,6 +436,19 @@ protected:
   virtual vector<bench_worker *>
   make_workers()
   {
+    /*********** load skewed workload *************/
+	ifstream skew_file;
+	skew_file.open("skew_workloads.txt");
+	if (skew_file.is_open())
+	{
+		string line;
+		for (int i = 0; i < 2000; i++) {
+		    getline (skew_file, line);
+			skew_load[i] = stoi(line);
+		}
+		skew_file.close();
+	}
+	/**********************************************/
     const unsigned alignment = coreid::num_cpus_online();
     const int blockstart =
       coreid::allocate_contiguous_aligned_block(nthreads, alignment);
@@ -443,7 +459,7 @@ protected:
     for (size_t i = 0; i < nthreads; i++)
       ret.push_back(
         new ycsb_worker(
-          blockstart + i, r.next(), db, open_tables,
+          blockstart + i, r.next(), db, open_tables, (int *)skew_load,
           &barrier_a, &barrier_b));
     return ret;
   }

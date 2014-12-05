@@ -10,6 +10,8 @@
 #include "counter.h"
 #include "util.h"
 
+#include "benchmarks/measurement.h"
+
 using namespace std;
 using namespace util;
 
@@ -544,7 +546,7 @@ transaction_proto2_static::PurgeThreadOutstandingGCTasks()
 //#endif
 
 void
-transaction_proto2_static::clean_up_to_including(threadctx &ctx, uint64_t ro_tick_geq)
+transaction_proto2_static::clean_up_to_including(threadctx &ctx, uint64_t ro_tick_geq, zh_stat *measurements)
 {
   INVARIANT(!rcu::s_instance.in_rcu_region());
   INVARIANT(ctx.last_reaped_epoch_ <= ro_tick_geq);
@@ -572,6 +574,7 @@ transaction_proto2_static::clean_up_to_including(threadctx &ctx, uint64_t ro_tic
 #endif
 
   // XXX: hacky
+  timer t_cc;
   char rcu_guard[sizeof(scoped_rcu_base<false>)] = {0};
   const size_t max_niters_with_rcu = 128;
 #define ENTER_RCU() \
@@ -583,6 +586,7 @@ transaction_proto2_static::clean_up_to_including(threadctx &ctx, uint64_t ro_tic
       scoped_rcu_base<false> *px = (scoped_rcu_base<false> *) &rcu_guard[0]; \
       px->~scoped_rcu_base<false>(); \
     } while (0)
+  if (measurements != NULL) measurements->cc += t_cc.lap();
 
   ctx.scratch_.empty_accept_from(ctx.queue_, ro_tick_geq);
   ctx.scratch_.transfer_freelist(ctx.queue_);
@@ -666,11 +670,14 @@ transaction_proto2_static::clean_up_to_including(threadctx &ctx, uint64_t ro_tic
         ctx.pool_.emplace_back(spx);
       }
 
+	  double not_used = t_cc.lap();
       if (!in_rcu) {
         ENTER_RCU();
         niters_with_rcu = 0;
         in_rcu = true;
       }
+	  not_used ++;
+	  if (measurements != NULL) measurements->cc += t_cc.lap();
       typename concurrent_btree::value_type removed = 0;
       const bool did_remove = delent.btr_->remove(k, &removed);
       ALWAYS_ASSERT(did_remove);
@@ -679,17 +686,23 @@ transaction_proto2_static::clean_up_to_including(threadctx &ctx, uint64_t ro_tic
       dbtuple::release(delent.tuple()); // rcu free it
     }
 
+	double not_used2 = t_cc.lap();
     if (in_rcu && niters_with_rcu >= max_niters_with_rcu) {
       EXIT_RCU();
       niters_with_rcu = 0;
       in_rcu = false;
     }
+	not_used2 ++;
+	if (measurements != NULL) measurements->cc += t_cc.lap();
   }
   q.clear();
   g_evt_avg_proto_gc_queue_len.offer(n);
 
+  double not_used3 = t_cc.lap();
   if (in_rcu)
     EXIT_RCU();
+  if (measurements != NULL) measurements->cc += t_cc.lap();
+  not_used3 ++;
   INVARIANT(!rcu::s_instance.in_rcu_region());
 }
 

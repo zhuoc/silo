@@ -348,7 +348,8 @@ private:
 public:
   timer()
   {
-    lap();
+    //lap();
+	start = cur_usec();
   }
 
   inline uint64_t
@@ -356,6 +357,7 @@ public:
   {
     uint64_t t0 = start;
     uint64_t t1 = cur_usec();
+	//t1 = (t1 + (1000000 - t0)) % 1000000;
     start = t1;
     return t1 - t0;
   }
@@ -371,12 +373,12 @@ public:
   {
     struct timeval tv;
     gettimeofday(&tv, 0);
+    //return tv.tv_usec;
     return ((uint64_t)tv.tv_sec) * 1000000 + tv.tv_usec;
   }
 
 private:
-
-  uint64_t start;
+  uint64_t start = 0;
 };
 
 class scoped_timer {

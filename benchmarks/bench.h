@@ -69,7 +69,7 @@ public:
                const std::map<std::string, abstract_ordered_index *> &open_tables)
     : r(seed), db(db), open_tables(open_tables), b(0)
   {
-	measurements.other = -1;
+	measurements = new zh_stat();
     txn_obj_buf.reserve(str_arena::MinStrReserveLength);
     txn_obj_buf.resize(db->sizeof_txn_object(txn_flags));
   }
@@ -102,7 +102,10 @@ protected:
   spin_barrier *b;
   std::string txn_obj_buf;
   str_arena arena;
-  zh_stat measurements; // Zhuo's hack: just want something to pass...
+
+public:
+  zh_stat *measurements;
+  //int skew_load[2000];
 };
 
 class bench_worker : public ndb_thread {
@@ -122,16 +125,7 @@ public:
       backoff_shifts(0), // spin between [0, 2^backoff_shifts) times before retry
       size_delta(0)
   {
-	int i;
-	for (i = 0; i < 5; i++) {
-		measurements.prep[i] = 0;
-		measurements.work[i] = 0;
-		measurements.commit[i] = 0;
-	}
-    measurements.search = 0;
-	measurements.index = 0;
-	measurements.table = 0;
-	measurements.other = 0;
+	measurements = new zh_stat();
     txn_obj_buf.reserve(str_arena::MinStrReserveLength);
     txn_obj_buf.resize(db->sizeof_txn_object(txn_flags));
   }
@@ -220,7 +214,8 @@ protected:
   std::string txn_obj_buf;
   str_arena arena;
 public:
-  zh_stat measurements;
+  zh_stat *measurements; // Zhuo's hack: just want something to pass...
+  //int skew_load[2000];
 };
 
 class bench_runner {
@@ -230,7 +225,7 @@ public:
   bench_runner &operator=(const bench_runner &) = delete;
 
   bench_runner(abstract_db *db)
-    : db(db), barrier_a(nthreads), barrier_b(1) {}
+    : db(db), barrier_a(nthreads), barrier_b(1) {measurements = new zh_stat();}
   virtual ~bench_runner() {}
   void run();
 protected:
@@ -247,7 +242,8 @@ protected:
   spin_barrier barrier_a;
   spin_barrier barrier_b;
 
-  zh_stat measurements;
+  zh_stat *measurements;
+  //int skew_load[2000];
 };
 
 // XXX(stephentu): limit_callback is not optimal, should use

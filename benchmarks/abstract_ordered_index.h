@@ -26,7 +26,7 @@ public:
    * the memory associated with key. Returns true if found, false otherwise
    */
   virtual bool get(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &key,
       std::string &value,
@@ -51,7 +51,7 @@ public:
    * search [start_key, +infty)
    */
   virtual void scan(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &start_key,
       const std::string *end_key,
@@ -64,7 +64,7 @@ public:
    * backwards)
    */
   virtual void rscan(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &start_key,
       const std::string *end_key,
@@ -86,13 +86,13 @@ public:
    * value is overriden.
    */
   virtual const char * put(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &key,
       const std::string &value) = 0;
 
   virtual const char * put(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       std::string &&key,
       std::string &&value)
@@ -110,7 +110,7 @@ public:
    * Default implementation calls put(). See put() for meaning of return value.
    */
   virtual const char * insert(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &key,
       const std::string &value)
@@ -119,7 +119,7 @@ public:
   }
 
   virtual const char * insert(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       std::string &&key,
       std::string &&value)
@@ -132,7 +132,7 @@ public:
    * Default implementation calls put() with NULL (zero-length) value
    */
   virtual void remove(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       const std::string &key)
   {
@@ -140,7 +140,7 @@ public:
   }
 
   virtual void remove(
-      zh_stat &measurements,
+      zh_stat *measurements,
       void *txn,
       std::string &&key)
   {

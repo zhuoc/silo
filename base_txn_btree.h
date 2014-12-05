@@ -170,7 +170,7 @@ protected:
 
   template <typename Traits, typename ValueReader>
   inline bool
-  do_search(zh_stat &measurements,
+  do_search(zh_stat *measurements,
             Transaction<Traits> &t,
             const typename P::Key &k,
             ValueReader &value_reader);
@@ -178,7 +178,7 @@ protected:
   template <typename Traits, typename Callback,
             typename KeyReader, typename ValueReader>
   inline void
-  do_search_range_call(zh_stat &measurements,
+  do_search_range_call(zh_stat *measurements,
                        Transaction<Traits> &t,
                        const typename P::Key &lower,
                        const typename P::Key *upper,
@@ -189,7 +189,7 @@ protected:
   template <typename Traits, typename Callback,
             typename KeyReader, typename ValueReader>
   inline void
-  do_rsearch_range_call(zh_stat &measurements,
+  do_rsearch_range_call(zh_stat *measurements,
                         Transaction<Traits> &t,
                         const typename P::Key &upper,
                         const typename P::Key *lower,
@@ -203,7 +203,7 @@ protected:
   //
   // NOTE: both key and value are expected to be stable values already
   template <typename Traits>
-  void do_tree_put(zh_stat &measurements,
+  void do_tree_put(zh_stat *measurements,
                    Transaction<Traits> &t,
                    const std::string *k,
                    const typename P::Value *v,
@@ -225,12 +225,11 @@ template <template <typename> class Transaction, typename P>
 template <typename Traits, typename ValueReader>
 bool
 base_txn_btree<Transaction, P>::do_search(
-    zh_stat &measurements,
+    zh_stat *measurements,
     Transaction<Traits> &t,
     const typename P::Key &k,
     ValueReader &value_reader)
 {
-  timer tt;
   t.ensure_active();
 
   typename P::KeyWriter key_writer(&k);
@@ -242,16 +241,16 @@ base_txn_btree<Transaction, P>::do_search(
   concurrent_btree::versioned_node_t search_info;
   timer t_index;
   const bool found = this->underlying_btree.search(varkey(*key_str), underlying_v, &search_info);
-  measurements.index += t_index.lap();
+  if (measurements != NULL) measurements->index += t_index.lap();
   if (found) {
     const dbtuple * const tuple = reinterpret_cast<const dbtuple *>(underlying_v);
     bool ret = t.do_tuple_read(measurements, tuple, value_reader);
-    measurements.search += tt.lap();
+    //if (measurements != NULL) measurements->search += tt.lap();
     return ret;
   } else {
     // not found, add to absent_set
     t.do_node_read(measurements, search_info.first, search_info.second);
-    measurements.search += tt.lap();
+    //if (measurements != NULL) measurements->search += tt.lap();
     return false;
   }
 }
@@ -335,7 +334,7 @@ base_txn_btree<Transaction, P>::purge_tree_walker::on_node_failure()
 template <template <typename> class Transaction, typename P>
 template <typename Traits>
 void base_txn_btree<Transaction, P>::do_tree_put(
-    zh_stat &measurements,
+    zh_stat *measurements,
     Transaction<Traits> &t,
     const std::string *k,
     const typename P::Value *v,
@@ -350,7 +349,7 @@ void base_txn_btree<Transaction, P>::do_tree_put(
 
   if (unlikely(t.is_snapshot())) {
     const transaction_base::abort_reason r = transaction_base::ABORT_REASON_USER;
-    t.abort_impl(measurements, r);
+    t.abort_impl(r, measurements);
     throw transaction_abort_exception(r);
   }
   dbtuple *px = nullptr;
@@ -361,7 +360,7 @@ retry:
     INVARIANT(!ret.second || ret.first);
     if (unlikely(ret.second)) {
       const transaction_base::abort_reason r = transaction_base::ABORT_REASON_WRITE_NODE_INTERFERENCE;
-      t.abort_impl(measurements, r);
+      t.abort_impl(r, measurements);
       throw transaction_abort_exception(r);
     }
     px = ret.first;
@@ -373,14 +372,14 @@ retry:
     typename concurrent_btree::value_type bv = 0;
     timer t_index;
     if (!this->underlying_btree.search(varkey(*k), bv)) {
-      measurements.index += t_index.lap();
+      if (measurements != NULL) measurements->index += t_index.lap();
       // XXX(stephentu): if we are removing a key and we can't find it, then we
       // should just treat this as a read [of an empty-value], instead of
       // explicitly inserting an empty node...
       expect_new = true;
       goto retry;
     }
-    measurements.index += t_index.lap();
+    if (measurements != NULL) measurements->index += t_index.lap();
     px = reinterpret_cast<dbtuple *>(bv);
   }
   INVARIANT(px);
@@ -406,7 +405,7 @@ base_txn_btree<Transaction, P>
   ::on_resp_node( 
     const typename concurrent_btree::node_opaque_t *n, uint64_t version)
 {
-  zh_stat measurements;
+  zh_stat *measurements = new zh_stat();
   VERBOSE(std::cerr << "on_resp_node(): <node=0x" << util::hexify(intptr_t(n))
                << ", version=" << version << ">" << std::endl);
   VERBOSE(std::cerr << "  " << concurrent_btree::NodeStringify(n) << std::endl);
@@ -423,7 +422,7 @@ base_txn_btree<Transaction, P>
     const typename concurrent_btree::string_type &k, typename concurrent_btree::value_type v,
     const typename concurrent_btree::node_opaque_t *n, uint64_t version)
 {
-  zh_stat measurements;
+  zh_stat *measurements = new zh_stat();
   t->ensure_active();
   VERBOSE(std::cerr << "search range k: " << util::hexify(k) << " from <node=0x" << util::hexify(n)
                     << ", version=" << version << ">" << std::endl
@@ -440,7 +439,7 @@ template <typename Traits, typename Callback,
           typename KeyReader, typename ValueReader>
 void
 base_txn_btree<Transaction, P>::do_search_range_call(
-    zh_stat &measurements,
+    zh_stat *measurements,
     Transaction<Traits> &t,
     const typename P::Key &lower,
     const typename P::Key *upper,
@@ -479,7 +478,7 @@ base_txn_btree<Transaction, P>::do_search_range_call(
   this->underlying_btree.search_range_call(
       varkey(*lower_str), upper_str ? &uppervk : nullptr,
       c, t.string_allocator()());
-  measurements.index += t_index.lap();
+  if (measurements != NULL) measurements->index += t_index.lap();
 }
 
 template <template <typename> class Transaction, typename P>
@@ -487,7 +486,7 @@ template <typename Traits, typename Callback,
           typename KeyReader, typename ValueReader>
 void
 base_txn_btree<Transaction, P>::do_rsearch_range_call(
-    zh_stat &measurements,
+    zh_stat *measurements,
     Transaction<Traits> &t,
     const typename P::Key &upper,
     const typename P::Key *lower,
@@ -518,7 +517,7 @@ base_txn_btree<Transaction, P>::do_rsearch_range_call(
   this->underlying_btree.rsearch_range_call(
       varkey(*upper_str), lower_str ? &lowervk : nullptr,
       c, t.string_allocator()());
-  measurements.index += t_index.lap();
+  if (measurements != NULL)	measurements->index += t_index.lap();
 }
 
 #endif /* _NDB_BASE_TXN_BTREE_H_ */

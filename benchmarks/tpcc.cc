@@ -1298,7 +1298,7 @@ tpcc_worker::txn_new_order()
     }
     mlock.multilock();
   }
-  measurements.prep[0] += t.lap();
+  measurements->prep[0] += t.lap();
   try {
     ssize_t ret = 0;
     const customer::key k_c(warehouse_id, districtID, customerID);
@@ -1392,15 +1392,15 @@ tpcc_worker::txn_new_order()
     }
 
     measure_txn_counters(txn, "txn_new_order");
-	measurements.work[0] += t.lap();
+	measurements->work[0] += t.lap();
     if (likely(db->commit_txn(txn, measurements))) {
-	  measurements.commit[0] += t.lap();
+	  measurements->commit[0] += t.lap();
       return txn_result(true, ret);
 	}
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(measurements, txn);
   }
-  measurements.commit[0] += t.lap();
+  measurements->commit[0] += t.lap();
   return txn_result(false, 0);
 }
 
@@ -1436,6 +1436,7 @@ STATIC_COUNTER_DECL(scopedperf::tod_ctr, delivery_probe0_tod, delivery_probe0_cg
 tpcc_worker::txn_result
 tpcc_worker::txn_delivery()
 {
+  zh_stat *measurements = new zh_stat();
   timer t;
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint o_carrier_id = RandomNumber(r, 1, NumDistrictsPerWarehouse());
@@ -1463,7 +1464,7 @@ tpcc_worker::txn_delivery()
   scoped_str_arena s_arena(arena);
   scoped_lock_guard<spinlock> slock(
       g_enable_partition_locks ? &LockForPartition(warehouse_id) : nullptr);
-  measurements.prep[1] += t.lap();
+  measurements->prep[1] += t.lap();
   try {
     ssize_t ret = 0;
     for (uint d = 1; d <= NumDistrictsPerWarehouse(); d++) {
@@ -1480,14 +1481,14 @@ tpcc_worker::txn_delivery()
         continue;
       last_no_o_ids[d - 1] = k_no->no_o_id + 1; // XXX: update last seen
 
-      measurements.work[1] += t.lap();
+      measurements->work[1] += t.lap();
       const oorder::key k_oo(warehouse_id, d, k_no->no_o_id);
       if (unlikely(!tbl_oorder(warehouse_id)->get(measurements, txn, Encode(obj_key0, k_oo), obj_v))) {
         // even if we read the new order entry, there's no guarantee
         // we will read the oorder entry: in this case the txn will abort,
         // but we're simply bailing out early
         db->abort_txn(measurements, txn);
-		measurements.commit[1] += t.lap();
+		measurements->commit[1] += t.lap();
         return txn_result(false, 0);
       }
       oorder::value v_oo_temp;
@@ -1541,15 +1542,15 @@ tpcc_worker::txn_delivery()
       tbl_customer(warehouse_id)->put(measurements, txn, Encode(str(), k_c), Encode(str(), v_c_new));
     }
     measure_txn_counters(txn, "txn_delivery");
-	measurements.work[1] += t.lap();
+	measurements->work[1] += t.lap();
     if (likely(db->commit_txn(txn, measurements))){
-	  measurements.commit[1] += t.lap();
+	  measurements->commit[1] += t.lap();
       return txn_result(true, ret);
 	}
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(measurements, txn);
   }
-  measurements.commit[1] += t.lap();
+  measurements->commit[1] += t.lap();
   return txn_result(false, 0);
 }
 
@@ -1558,6 +1559,7 @@ static event_avg_counter evt_avg_cust_name_idx_scan_size("avg_cust_name_idx_scan
 tpcc_worker::txn_result
 tpcc_worker::txn_payment()
 {
+  zh_stat *measurements = new zh_stat();
   timer t;
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint districtID = RandomNumber(r, 1, NumDistrictsPerWarehouse());
@@ -1596,7 +1598,7 @@ tpcc_worker::txn_payment()
   if (customerWarehouseID != warehouse_id)
     ++evt_tpcc_cross_partition_payment_txns;
 
-  measurements.prep[2] += t.lap();
+  measurements->prep[2] += t.lap();
   try {
     ssize_t ret = 0;
 
@@ -1709,15 +1711,15 @@ tpcc_worker::txn_payment()
     ret += history_sz;
 
     measure_txn_counters(txn, "txn_payment");
-	measurements.work[2] += t.lap();
+	measurements->work[2] += t.lap();
     if (likely(db->commit_txn(txn, measurements))) {
-	  measurements.commit[2] += t.lap();
+	  measurements->commit[2] += t.lap();
       return txn_result(true, ret);
 	}
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(measurements, txn);
   }
-  measurements.commit[2] += t.lap();
+  measurements->commit[2] += t.lap();
   return txn_result(false, 0);
 }
 
@@ -1747,7 +1749,7 @@ STATIC_COUNTER_DECL(scopedperf::tod_ctr, order_status_probe0_tod, order_status_p
 tpcc_worker::txn_result
 tpcc_worker::txn_order_status()
 {
-  timer t;
+  zh_stat *measurements = new zh_stat();
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint districtID = RandomNumber(r, 1, NumDistrictsPerWarehouse());
 
@@ -1768,7 +1770,6 @@ tpcc_worker::txn_order_status()
   scoped_str_arena s_arena(arena);
   // NB: since txn_order_status() is a RO txn, we assume that
   // locking is un-necessary (since we can just read from some old snapshot)
-	measurements.prep[3] += t.lap();
   try {
 
     customer::key k_c;
@@ -1861,15 +1862,12 @@ tpcc_worker::txn_order_status()
     ALWAYS_ASSERT(c_order_line.n >= 5 && c_order_line.n <= 15);
 
     measure_txn_counters(txn, "txn_order_status");
-	measurements.work[3] += t.lap();
     if (likely(db->commit_txn(txn, measurements))) {
-  	  measurements.commit[3] += t.lap();
       return txn_result(true, 0);
 	}
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(measurements, txn);
   }
-  measurements.commit[3] += t.lap();
   return txn_result(false, 0);
 }
 
@@ -1907,7 +1905,7 @@ static event_avg_counter evt_avg_stock_level_loop_join_lookups("stock_level_loop
 tpcc_worker::txn_result
 tpcc_worker::txn_stock_level()
 {
-  timer t;
+  zh_stat *measurements = new zh_stat();
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint threshold = RandomNumber(r, 10, 20);
   const uint districtID = RandomNumber(r, 1, NumDistrictsPerWarehouse());
@@ -1931,7 +1929,6 @@ tpcc_worker::txn_stock_level()
   scoped_str_arena s_arena(arena);
   // NB: since txn_stock_level() is a RO txn, we assume that
   // locking is un-necessary (since we can just read from some old snapshot)
-  measurements.prep[4] += t.lap();
   try {
     const district::key k_d(warehouse_id, districtID);
     ALWAYS_ASSERT(tbl_district(warehouse_id)->get(measurements, txn, Encode(obj_key0, k_d), obj_v));
@@ -1976,15 +1973,12 @@ tpcc_worker::txn_stock_level()
       // NB(stephentu): s_i_ids_distinct.size() is the computed result of this txn
     }
     measure_txn_counters(txn, "txn_stock_level");
-	measurements.work[4] += t.lap();
     if (likely(db->commit_txn(txn, measurements))) {
-  	  measurements.commit[4] += t.lap();
       return txn_result(true, 0);
 	}
   } catch (abstract_db::abstract_abort_exception &ex) {
     db->abort_txn(measurements, txn);
   }
-  measurements.commit[4] += t.lap();
   return txn_result(false, 0);
 }
 

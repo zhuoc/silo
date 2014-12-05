@@ -759,7 +759,7 @@ public:
    * is an error- this will cause deadlock
    */
   template <typename Reader, typename StringAllocator>
-  inline ALWAYS_INLINE ReadStatus
+  ReadStatus
   stable_read(
       tid_t t, tid_t &start_t,
       Reader &reader, StringAllocator &sa,
@@ -851,7 +851,7 @@ public:
    * Note: if this != ret.first, then we need a tree replacement
    */
   template <typename Transaction>
-  write_record_ret
+  NEVER_INLINE write_record_ret
   write_record_at(const Transaction *txn, tid_t t,
                   const void *v, tuple_writer_t writer)
   {

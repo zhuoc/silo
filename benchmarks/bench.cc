@@ -249,12 +249,12 @@ bench_runner::run()
   uint64_t latency_numer_us = 0;
   for (size_t i = 0; i < nthreads; i++) {
 	for (int j = 0; j < 5; j++) {
-      measurements.prep[j] += workers[i]->measurements.prep[j];
-      measurements.work[j] += workers[i]->measurements.work[j];
-      measurements.commit[j] += workers[i]->measurements.commit[j];
+      measurements->prep[j] += workers[i]->measurements->prep[j];
+      measurements->work[j] += workers[i]->measurements->work[j];
+      measurements->commit[j] += workers[i]->measurements->commit[j];
 	}
-    measurements.search += workers[i]->measurements.search;
-    measurements.index += workers[i]->measurements.index;
+	measurements->add_measurement(workers[i]->measurements, true);
+    measurements->aborted += workers[i]->measurements->aborted;
     n_commits += workers[i]->get_ntxn_commits();
     n_aborts += workers[i]->get_ntxn_aborts();
     latency_numer_us += workers[i]->get_latency_numer_us();
@@ -379,13 +379,16 @@ bench_runner::run()
        << agg_abort_rate << endl;
   cout.flush();
 
-  cout << measurements.get_prep() << " "
-	   << measurements.get_work() << " "
-	   << measurements.get_commit() << endl;
-  cout.flush();
-
-  cout << measurements.search << endl;
-  cout << measurements.index << endl;
+  cout << "get:" << measurements->get << endl;
+  cout << "put:" << measurements->put << endl;
+  cout << "new_txn:" << measurements->new_txn << endl;
+  cout << "commit_txn:" << measurements->commit_txn << endl;
+  cout << "all:" << measurements->get+measurements->put+measurements->new_txn+measurements->commit_txn << endl;
+  cout << "index:" << measurements->index << endl;
+  cout << "table read:" << measurements->table_read << endl;
+  cout << "table write:" << measurements->table_write << endl;
+  cout << "concurrency control:" << measurements->cc << endl;
+  cout << "aborted:" << measurements->aborted << endl;
   cout.flush();
 
   if (!slow_exit)

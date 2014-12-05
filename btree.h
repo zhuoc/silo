@@ -26,6 +26,8 @@
 #include "small_vector.h"
 #include "ownership_checker.h"
 
+#include "benchmarks/measurement.h"
+
 namespace private_ {
   template <typename T, typename P> struct u64manip;
   template <typename P>

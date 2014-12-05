@@ -118,12 +118,12 @@ public:
    * On failure, can either throw abstract_abort_exception, or
    * return false- caller should be prepared to deal with both cases
    */
-  virtual bool commit_txn(void *txn, zh_stat &measurements) = 0;
+  virtual bool commit_txn(void *txn, zh_stat *measurements) = 0;
 
   /**
    * XXX
    */
-  virtual void abort_txn(zh_stat &measurements, void *txn) = 0;
+  virtual void abort_txn(zh_stat *measurements, void *txn) = 0;
 
   virtual void print_txn_debug(void *txn) const {}
 

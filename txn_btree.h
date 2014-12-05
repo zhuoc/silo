@@ -292,7 +292,7 @@ public:
 
   template <typename Traits>
   inline bool
-  search(zh_stat &measurements,
+  search(zh_stat *measurements,
          Transaction<Traits> &t,
          const varkey &k,
          value_type &v,
@@ -305,7 +305,7 @@ public:
   // precondition: max_bytes_read > 0
   template <typename Traits>
   inline bool
-  search(zh_stat &measurements,
+  search(zh_stat *measurements,
          Transaction<Traits> &t,
          const key_type &k,
          value_type &v,
@@ -317,7 +317,7 @@ public:
 
   template <typename Traits>
   inline void
-  search_range_call(zh_stat &measurements,
+  search_range_call(zh_stat *measurements,
                     Transaction<Traits> &t,
                     const key_type &lower,
                     const key_type *upper,
@@ -331,7 +331,7 @@ public:
 
   template <typename Traits>
   inline void
-  rsearch_range_call(zh_stat &measurements,
+  rsearch_range_call(zh_stat *measurements,
                      Transaction<Traits> &t,
                      const key_type &upper,
                      const key_type *lower,
@@ -345,7 +345,7 @@ public:
 
   template <typename Traits>
   inline void
-  search_range_call(zh_stat &measurements,
+  search_range_call(zh_stat *measurements,
                     Transaction<Traits> &t,
                     const varkey &lower,
                     const varkey *upper,
@@ -361,7 +361,7 @@ public:
 
   template <typename Traits>
   inline void
-  rsearch_range_call(zh_stat &measurements,
+  rsearch_range_call(zh_stat *measurements,
                      Transaction<Traits> &t,
                      const varkey &upper,
                      const varkey *lower,
@@ -377,7 +377,7 @@ public:
 
   template <typename Traits, typename T>
   inline void
-  search_range(zh_stat &measurements,
+  search_range(zh_stat *measurements,
                Transaction<Traits> &t,
                const key_type &lower,
                const key_type *upper,
@@ -390,7 +390,7 @@ public:
 
   template <typename Traits, typename T>
   inline void
-  search_range(zh_stat &measurements,
+  search_range(zh_stat *measurements,
                Transaction<Traits> &t,
                const varkey &lower,
                const varkey *upper,
@@ -406,7 +406,7 @@ public:
 
   template <typename Traits>
   inline void
-  put(zh_stat &measurements, Transaction<Traits> &t, const key_type &k, const value_type &v)
+  put(zh_stat *measurements, Transaction<Traits> &t, const key_type &k, const value_type &v)
   {
     INVARIANT(!v.empty());
     this->do_tree_put(measurements, 
@@ -416,7 +416,7 @@ public:
 
   template <typename Traits>
   inline void
-  put(zh_stat &measurements, Transaction<Traits> &t, const varkey &k, const value_type &v)
+  put(zh_stat *measurements, Transaction<Traits> &t, const varkey &k, const value_type &v)
   {
     INVARIANT(!v.empty());
     this->do_tree_put(measurements,
@@ -426,7 +426,7 @@ public:
 
   template <typename Traits>
   inline void
-  insert(zh_stat &measurements, Transaction<Traits> &t, const key_type &k, const value_type &v)
+  insert(zh_stat *measurements, Transaction<Traits> &t, const key_type &k, const value_type &v)
   {
     INVARIANT(!v.empty());
     this->do_tree_put(measurements,
@@ -438,7 +438,7 @@ public:
 
   template <typename Traits>
   inline void
-  insert(zh_stat &measurements, Transaction<Traits> &t, const key_type &k, const uint8_t *v, size_type sz)
+  insert(zh_stat *measurements, Transaction<Traits> &t, const key_type &k, const uint8_t *v, size_type sz)
   {
     INVARIANT(v);
     INVARIANT(sz);
@@ -449,7 +449,7 @@ public:
 
   template <typename Traits>
   inline void
-  insert(zh_stat &measurements, Transaction<Traits> &t, const varkey &k, const uint8_t *v, size_type sz)
+  insert(zh_stat *measurements, Transaction<Traits> &t, const varkey &k, const uint8_t *v, size_type sz)
   {
     INVARIANT(v);
     INVARIANT(sz);
@@ -474,14 +474,14 @@ public:
 
   template <typename Traits>
   inline void
-  remove(zh_stat &measurements, Transaction<Traits> &t, const key_type &k)
+  remove(zh_stat *measurements, Transaction<Traits> &t, const key_type &k)
   {
     this->do_tree_put(measurements, t, stablize(t, k), nullptr, txn_btree_::tuple_writer, false);
   }
 
   template <typename Traits>
   inline void
-  remove(zh_stat &measurements, Transaction<Traits> &t, const varkey &k)
+  remove(zh_stat *measurements, Transaction<Traits> &t, const varkey &k)
   {
     this->do_tree_put(measurements, t, stablize(t, k), nullptr, txn_btree_::tuple_writer, false);
   }
