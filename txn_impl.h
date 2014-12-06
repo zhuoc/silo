@@ -27,10 +27,9 @@ transaction<Protocol, Traits>::~transaction()
   INVARIANT(rcu::s_instance.in_rcu_region());
   const unsigned cur_depth = rcu_guard_->sync()->depth();
   rcu_guard_.destroy();
-  zh_stat *measurements = new zh_stat();
   if (cur_depth == 1) {
     INVARIANT(!rcu::s_instance.in_rcu_region());
-    cast()->on_post_rcu_region_completion(measurements);
+    cast()->on_post_rcu_region_completion(NULL);
   }
 #ifdef BTREE_LOCK_OWNERSHIP_CHECKING
   concurrent_btree::AssertAllNodeLocksReleased();

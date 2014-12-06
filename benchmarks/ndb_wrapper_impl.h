@@ -200,12 +200,6 @@ bool
 ndb_wrapper<Transaction>::commit_txn(void *txn, zh_stat *measurements)
 {
   util::timer t_cc; 
-  util::timer t_cc2; 
-  t_cc2.lap();
-  util::timer t_cc3; 
-  t_cc3.lap();
-  util::timer t_cc4; 
-  t_cc4.lap();
   ndbtxn * const p = reinterpret_cast<ndbtxn *>(txn);
 #define MY_OP_X(a, b) \
   case a: \

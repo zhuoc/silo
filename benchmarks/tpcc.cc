@@ -1436,7 +1436,7 @@ STATIC_COUNTER_DECL(scopedperf::tod_ctr, delivery_probe0_tod, delivery_probe0_cg
 tpcc_worker::txn_result
 tpcc_worker::txn_delivery()
 {
-  zh_stat *measurements = new zh_stat();
+  zh_stat *measurements = NULL;//new zh_stat();
   timer t;
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint o_carrier_id = RandomNumber(r, 1, NumDistrictsPerWarehouse());
@@ -1559,7 +1559,7 @@ static event_avg_counter evt_avg_cust_name_idx_scan_size("avg_cust_name_idx_scan
 tpcc_worker::txn_result
 tpcc_worker::txn_payment()
 {
-  zh_stat *measurements = new zh_stat();
+  zh_stat *measurements = NULL;//new zh_stat();
   timer t;
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint districtID = RandomNumber(r, 1, NumDistrictsPerWarehouse());
@@ -1749,7 +1749,7 @@ STATIC_COUNTER_DECL(scopedperf::tod_ctr, order_status_probe0_tod, order_status_p
 tpcc_worker::txn_result
 tpcc_worker::txn_order_status()
 {
-  zh_stat *measurements = new zh_stat();
+  zh_stat *measurements = NULL;//new zh_stat();
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint districtID = RandomNumber(r, 1, NumDistrictsPerWarehouse());
 
@@ -1905,7 +1905,7 @@ static event_avg_counter evt_avg_stock_level_loop_join_lookups("stock_level_loop
 tpcc_worker::txn_result
 tpcc_worker::txn_stock_level()
 {
-  zh_stat *measurements = new zh_stat();
+  zh_stat *measurements = NULL;//new zh_stat();
   const uint warehouse_id = PickWarehouseId(r, warehouse_id_start, warehouse_id_end);
   const uint threshold = RandomNumber(r, 10, 20);
   const uint districtID = RandomNumber(r, 1, NumDistrictsPerWarehouse());

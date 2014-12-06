@@ -248,11 +248,6 @@ bench_runner::run()
   size_t n_aborts = 0;
   uint64_t latency_numer_us = 0;
   for (size_t i = 0; i < nthreads; i++) {
-	for (int j = 0; j < 5; j++) {
-      measurements->prep[j] += workers[i]->measurements->prep[j];
-      measurements->work[j] += workers[i]->measurements->work[j];
-      measurements->commit[j] += workers[i]->measurements->commit[j];
-	}
 	measurements->add_measurement(workers[i]->measurements, true);
     measurements->aborted += workers[i]->measurements->aborted;
     n_commits += workers[i]->get_ntxn_commits();
@@ -380,7 +375,9 @@ bench_runner::run()
   cout.flush();
 
   cout << "get:" << measurements->get << endl;
+  cout << "get timer counts:" << measurements->get_counter << endl;
   cout << "put:" << measurements->put << endl;
+  cout << "put timer counts:" << measurements->put_counter << endl;
   cout << "new_txn:" << measurements->new_txn << endl;
   cout << "commit_txn:" << measurements->commit_txn << endl;
   cout << "all:" << measurements->get+measurements->put+measurements->new_txn+measurements->commit_txn << endl;

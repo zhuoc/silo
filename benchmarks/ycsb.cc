@@ -50,7 +50,8 @@ public:
   txn_result
   txn_read()
   {
-	zh_stat *temp_measurements = new zh_stat();
+	//zh_stat *temp_measurements = new zh_stat();
+	zh_stat *temp_measurements = measurements;
 	timer t_big;
     void * const txn = db->new_txn(txn_flags, arena, txn_buf(), abstract_db::HINT_KV_GET_PUT);
 	temp_measurements->new_txn += t_big.lap();
@@ -61,12 +62,13 @@ public:
 	  t_big.lap();
       ALWAYS_ASSERT(tbl->get(temp_measurements, txn, kk, obj_v));
 	  temp_measurements->get += t_big.lap();
+	  temp_measurements->get_counter += 4;
       computation_n += obj_v.size();
       measure_txn_counters(txn, "txn_read");
 	  t_big.lap();
       if (likely(db->commit_txn(txn, temp_measurements))) {
 		temp_measurements->commit_txn += t_big.lap();
-		measurements->add_measurement(temp_measurements, true);
+		//measurements->add_measurement(temp_measurements, true);
         return txn_result(true, 0);
 	  } else {
 		temp_measurements->commit_txn += t_big.lap();
@@ -94,9 +96,11 @@ public:
     scoped_str_arena s_arena(arena);
     try {
 	  int k = r.next() % nkeys;
+	  string kk = u64_varkey(k).str(obj_key0);
 	  t_big.lap();
-      tbl->put(temp_measurements, txn, u64_varkey(k).str(str()), str().assign(YCSBRecordSize, 'b'));
+      tbl->put(temp_measurements, txn, kk, str().assign(YCSBRecordSize, 'b'));
 	  temp_measurements->put += t_big.lap();
+	  temp_measurements->put_counter += 4;
       measure_txn_counters(txn, "txn_write");
 	  t_big.lap();
       if (likely(db->commit_txn(txn, temp_measurements))) {

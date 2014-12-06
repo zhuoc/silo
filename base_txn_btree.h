@@ -245,12 +245,10 @@ base_txn_btree<Transaction, P>::do_search(
   if (found) {
     const dbtuple * const tuple = reinterpret_cast<const dbtuple *>(underlying_v);
     bool ret = t.do_tuple_read(measurements, tuple, value_reader);
-    //if (measurements != NULL) measurements->search += tt.lap();
     return ret;
   } else {
     // not found, add to absent_set
     t.do_node_read(measurements, search_info.first, search_info.second);
-    //if (measurements != NULL) measurements->search += tt.lap();
     return false;
   }
 }
@@ -405,11 +403,11 @@ base_txn_btree<Transaction, P>
   ::on_resp_node( 
     const typename concurrent_btree::node_opaque_t *n, uint64_t version)
 {
-  zh_stat *measurements = new zh_stat();
+  //zh_stat *measurements = new zh_stat();
   VERBOSE(std::cerr << "on_resp_node(): <node=0x" << util::hexify(intptr_t(n))
                << ", version=" << version << ">" << std::endl);
   VERBOSE(std::cerr << "  " << concurrent_btree::NodeStringify(n) << std::endl);
-  t->do_node_read(measurements, n, version);
+  t->do_node_read(NULL, n, version);
 }
 
 template <template <typename> class Transaction, typename P>
@@ -422,13 +420,13 @@ base_txn_btree<Transaction, P>
     const typename concurrent_btree::string_type &k, typename concurrent_btree::value_type v,
     const typename concurrent_btree::node_opaque_t *n, uint64_t version)
 {
-  zh_stat *measurements = new zh_stat();
+  //zh_stat *measurements = new zh_stat();
   t->ensure_active();
   VERBOSE(std::cerr << "search range k: " << util::hexify(k) << " from <node=0x" << util::hexify(n)
                     << ", version=" << version << ">" << std::endl
                     << "  " << *((dbtuple *) v) << std::endl);
   const dbtuple * const tuple = reinterpret_cast<const dbtuple *>(v);
-  if (t->do_tuple_read(measurements, tuple, *value_reader))
+  if (t->do_tuple_read(NULL, tuple, *value_reader))
     return caller_callback->invoke(
         (*key_reader)(k), value_reader->results());
   return true;
